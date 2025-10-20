@@ -4,3 +4,4 @@ INTEGRANTES:
 - Jenny Catherine Herrera
 - Frank Kenner Olmos Prada
 - Daniel Aguilar Castro
+-Eduar Mendez
