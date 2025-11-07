@@ -22,47 +22,46 @@ desarrollada en Python/Django y base de datos SQLite.
 - Doc/QA — Documentación y UML
 
 ## 📸Organización de repositorio
+```bash
 MasacottaDesk/
-│
 ├── app/
-│   ├── ui/                     # vistas (templates Django)
+│   ├── ui/                     # Vistas (templates Django)
 │   │   ├── productos.html
 │   │   ├── ventas.html
 │   │   ├── clientes.html
 │   │   ├── alertas.html
 │   │   └── base.html
 │   │
-│   ├── logic/                  # lógica y servicios
+│   ├── logic/                  # Lógica y servicios
 │   │   ├── inventory_service.py
 │   │   ├── sales_service.py
 │   │   ├── alert_service.py
 │   │   └── pdf_service.py
 │   │
-│   ├── db/                     # base de datos y modelos
+│   ├── db/                     # Base de datos y modelos
 │   │   ├── models.py
 │   │   └── conexion.py
 │   │
-│   ├── tests/                  # pruebas unitarias
+│   ├── tests/                  # Pruebas unitarias
 │   │   ├── test_inventory.py
 │   │   ├── test_sales.py
 │   │   └── test_alerts.py
 │   │
-│   └── utils/                  # funciones de apoyo
+│   └── utils/                  # Funciones de apoyo
 │       ├── validators.py
 │       └── backup.py
 │
 ├── data/
-│   ├── masacotta.db            # base de datos SQLite local
-│   └── seeds.sql               # datos de prueba (50 registros)
+│   ├── masacotta.db            # Base de datos SQLite local
+│   └── seeds.sql               # Datos de prueba (50 registros)
 │
 ├── docs/
-│   ├── uml/                    # diagramas
-│   ├── erd/                    # modelo de datos
-│   └── evidencias/             # capturas
+│   ├── uml/                    # Diagramas UML
+│   ├── erd/                    # Modelo de datos
+│   └── evidencias/             # Capturas y evidencias
 │
-├── manage.py                   # ejecución Django
+├── manage.py                   # Ejecución Django
 ├── requirements.txt
-├── README.md                   # documentación del proyecto
-└── LICENSE (opcional)
-
+├── README.md                   # Documentación del proyecto
+└── LICENSE                     # (Opcional)
 
