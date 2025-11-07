@@ -1,17 +1,25 @@
-Proyecto — Asignatura Sistemas de Información
-Universidad Nacional de Colombia 🎓
+# Masacotta Desk
+Sistema local de inventario y ventas para microempresas cerámicas.
 
-Este repositorio reúne el desarrollo completo del proyecto académico para la asignatura Sistemas de Información, incluyendo análisis, documentación, diseño y construcción del sistema asignado. Aquí se organizarán las diferentes entregas, avances y artefactos técnicos del curso 📁.
+## 🚀 Objetivo
+Facilitar la gestión de stock, ventas y clientes mediante una aplicación local
+desarrollada en Python/Django y base de datos SQLite.
 
-Integrantes del equipo:
-• Jenny Catherine Herrera
-• Frank Kenner Olmos Prada
-• Daniel Aguilar Castro
-• Eduar Mendez
+## 🧩 Estructura del proyecto
+(app/ui, app/logic, app/db, data, docs...)
 
-El repositorio servirá como espacio central para la colaboración del equipo y el seguimiento del progreso del proyecto ✅.
+## ⚙️ Instalación
+1. Clonar el repositorio.
+2. Crear entorno virtual y activar.
+3. `pip install -r requirements.txt`
+4. Ejecutar migraciones (`python manage.py migrate`)
+5. Correr servidor local (`python manage.py runserver`)
 
-Los entregables de la materia sera por medio de ramas, hasta el momento podras acceder a: 
-• entregable_1 
-• Entregable_2
-• MasacottaDesk (proyectO)
+## 👥 Equipo
+- Dev 1 — Inventario
+- Dev 2 — Ventas
+- Dev 3 — Usuarios
+- Doc/QA — Documentación y UML
+
+## 📸 Evidencias
+Las capturas y reportes se almacenan en `/docs/evidencias/`.
