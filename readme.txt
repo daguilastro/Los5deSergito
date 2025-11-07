@@ -10,3 +10,8 @@ Integrantes del equipo:
 • Eduar Mendez
 
 El repositorio servirá como espacio central para la colaboración del equipo y el seguimiento del progreso del proyecto ✅.
+
+Los entregables de la materia sera por medio de ramas, hasta el momento podras acceder a: 
+• entregable_1 
+• Entregable_2
+• MasacottaDesk (proyectO)
