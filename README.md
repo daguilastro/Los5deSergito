@@ -1,13 +1,12 @@
 Primera Entrega — Proyecto Integrador (Sistemas de Información)
 
-Este documento presenta el análisis inicial de la empresa Masacotta, un estudio cerámico artesanal de Medellín, y el diseño preliminar del Sistema de Inventario y Ventas propuesto para mejorar sus procesos operativos.
-Incluye la descripción de la empresa, los problemas identificados, el levantamiento de requerimientos funcionales y no funcionales, así como el alcance y justificación del módulo seleccionado.
+Este documento corresponde al análisis inicial realizado para la empresa Masacotta, un estudio cerámico artesanal que busca modernizar sus procesos de inventario y ventas. Aquí se presenta el diagnóstico actual de la organización, los procesos clave, los problemas identificados y la definición detallada de los requerimientos para el desarrollo del sistema propuesto ✅.
 
-Contenido principal:
-• Contexto y diagnóstico de la empresa
-• Procesos actuales y stakeholders
-• Requerimientos del sistema (RF y RNF)
+Incluye:
+• Descripción de la empresa y su funcionamiento
+• Procesos actuales y actores involucrados
+• Requerimientos funcionales y no funcionales del sistema 📌
 • KPIs, reportes y decisiones basadas en datos
-• Alcance del módulo elegido y criterios de éxito
+• Alcance del módulo seleccionado y criterios de éxito 🎯
 
-Este documento corresponde a la primera fase del proyecto, enfocada en análisis y definición. El desarrollo técnico se abordará en las siguientes entregas.
+Este documento constituye la base conceptual y técnica para la siguiente fase del proyecto, donde se iniciará el diseño y construcción del MVP.
