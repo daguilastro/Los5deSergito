@@ -1,9 +1,9 @@
-Proyecto — Asignatura Sistemas de Información
+# Proyecto — Asignatura Sistemas de Información
 Universidad Nacional de Colombia 🎓
 
 Este repositorio reúne el desarrollo completo del proyecto académico para la asignatura Sistemas de Información, incluyendo análisis, documentación, diseño y construcción del sistema asignado. Aquí se organizarán las diferentes entregas, avances y artefactos técnicos del curso 📁.
 
-Integrantes del equipo:
+# Integrantes del equipo:
 • Jenny Catherine Herrera
 • Frank Kenner Olmos Prada
 • Daniel Aguilar Castro
