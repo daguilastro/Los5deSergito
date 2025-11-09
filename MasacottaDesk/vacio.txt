@@ -1,0 +1,43 @@
+```bash
+MasacottaDesk/  estamos en esta carpeta, cuando haas la estructura puedes eliminar este vacio.txt    nunca ouedes dejar una carpeta vacia, siempre pon un txt x 
+├── app/
+│   ├── ui/                     # Vistas (templates Django)
+│   │   ├── productos.html
+│   │   ├── ventas.html
+│   │   ├── clientes.html
+│   │   ├── alertas.html
+│   │   └── base.html
+│   │
+│   ├── logic/                  # Lógica y servicios
+│   │   ├── inventory_service.py
+│   │   ├── sales_service.py
+│   │   ├── alert_service.py
+│   │   └── pdf_service.py
+│   │
+│   ├── db/                     # Base de datos y modelos
+│   │   ├── models.py
+│   │   └── conexion.py
+│   │
+│   ├── tests/                  # Pruebas unitarias
+│   │   ├── test_inventory.py
+│   │   ├── test_sales.py
+│   │   └── test_alerts.py
+│   │
+│   └── utils/                  # Funciones de apoyo
+│       ├── validators.py
+│       └── backup.py
+│
+├── data/
+│   ├── masacotta.db            # Base de datos SQLite local
+│   └── seeds.sql               # Datos de prueba (50 registros)
+│
+├── docs/
+│   ├── uml/                    # Diagramas UML
+│   ├── erd/                    # Modelo de datos
+│   └── evidencias/             # Capturas y evidencias
+│
+├── manage.py                   # Ejecución Django
+├── requirements.txt
+├── README.md                   # Documentación del proyecto
+└── LICENSE                     # (Opcional)
+ 
