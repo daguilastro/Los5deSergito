@@ -1,0 +1,69 @@
+# --- Sistema / editores ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Logs / caches / cobertura ---
+*.log
+logs/
+.cache/
+coverage/
+.coverage
+.pytest_cache/
+
+# ===========================
+# BACKEND (Python / Django)
+# ===========================
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+
+# Artefactos Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+.python-version
+
+# Variables de entorno
+backend/.env
+backend/.env.*
+
+# Base de datos (¡ignorada!)
+backend/db.sqlite3
+backend/*.sqlite3
+
+# Archivos generados por Django
+backend/staticfiles/
+backend/media/
+
+# ===========================
+# FRONTEND (React + Vite + TS)
+# ===========================
+# Dependencias y builds
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Variables de entorno
+frontend/.env
+frontend/.env.*
+
+# Caches / artefactos
+frontend/.vite/
+frontend/.eslintcache
+frontend/coverage/
+frontend/*.tsbuildinfo
+
+# Si hubiera node_modules o builds en la raíz
+node_modules/
+dist/
+build/
+.eslintcache
+*.tsbuildinfo
