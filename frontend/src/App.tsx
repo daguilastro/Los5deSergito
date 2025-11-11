@@ -1,35 +1,34 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// src/App.tsx
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-function App() {
-  const [count, setCount] = useState(0)
+// Layout compartido (solo para páginas internas)
+import MainLayout from "./components/main_layout";
+import PanelPrincipal from "./pages/panel_principal";
+import Inventario from "./pages/inventario";
+
+// Páginas
+import LoginPage from "./pages/login_page";
+
+export default function App() {
+  const user = { name: "Admin", role: "Administrador" }; // opcional
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <BrowserRouter>
+      <Routes>
+        {/* Base y /login muestran el login (sin layout) */}
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/login_page" element={<LoginPage />} />
 
-export default App
+                {/* Rutas internas con layout fijo (sidebar + topbar) */}
+        <Route element={<MainLayout user={user} />}>
+          <Route path="/panel_principal" element={<PanelPrincipal />} />
+          <Route path="/inventario"       element={<Inventario />} />
+        </Route>
+
+
+        {/* Cualquier otra ruta → login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
