@@ -13,6 +13,8 @@ from .views import (
     inventario_add,
     alertas_stock,
     ventas_create,
+    producto_update,
+    producto_delete,
 )
 
 urlpatterns = [
@@ -26,7 +28,9 @@ urlpatterns = [
     path("dashboard/summary/", dashboard_summary),  # GET --Información de la página principal--
     path("dev/seed-demo-data/", seed_demo_data),  # POST --Crea datos de prueba--
     path("productos/", productos_list), # GET --Retorna todos los productos para la pestaña de inventario--
-    path("inventario/add/", inventario_add), # POST --Añade al inventario una cantidad de un producto o de un productId--
+    path("productos/add/", inventario_add), # POST --Añade al inventario una cantidad de un producto o de un productId--
     path("inventario/alertas/", alertas_stock),  # GET --Retorna los productos que están en alerta por stock bajo--
     path("ventas/create/", ventas_create),  # POST --Crea una nueva venta, o sea, descuenta del inventario TODO:HACER QUE HAGA UNA FACTURA--
+    path("productos/update/", producto_update), # POST
+    path("productos/delete/", producto_delete), # POST
 ]

@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'api',  # <- nuestra app,
+    'api', 
 ]
 
 MIDDLEWARE = [
@@ -50,9 +50,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"
-
+CSRF_TRUSTED_ORIGINS = ["http://localhost:5173"]
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [

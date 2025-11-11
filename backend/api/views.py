@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.db import transaction
 from django.views.decorators.http import require_POST, require_GET
-from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from django.views.decorators.csrf import csrf_exempt, csrf_protect, ensure_csrf_cookie
 from django.contrib.auth.hashers import make_password, check_password
 import json
 from datetime import date
@@ -19,25 +19,28 @@ from .models import (
     Usuario,
 )
 
+
 def require_session(view):
     def wrapper(request, *a, **kw):
         if not request.session.get("uid"):
-            return JsonResponse({"detail":"no autenticado"}, status=401)
+            return JsonResponse({"detail": "no autenticado"}, status=401)
         return view(request, *a, **kw)
     return wrapper
+
 
 def ping(request):
     return JsonResponse({"ok": True, "app": "api"})
 
+
 def csrf_token(request):
-    get_token(request) 
+    get_token(request)
     return JsonResponse({"csrf": "ok"})
+
 
 def _money_str(value) -> str:
     """Devuelve un string con 2 decimales (p.ej. '12.50')."""
     d = value if isinstance(value, Decimal) else Decimal(str(value))
     return f"{d.quantize(Decimal('0.01'))}"
-
 
 
 @require_session
@@ -49,6 +52,7 @@ def productos_list(request):
         ).order_by("id")
     )
     return JsonResponse({"items": rows, "count": len(rows)}, safe=False)
+
 
 @require_POST
 @csrf_protect
@@ -96,12 +100,14 @@ def ventas_create(request):
     # 1) Pre-validación de stock (antes de abrir transacción, solo para mensajes)
     faltantes = []
     for pid, qty in norm_items:
-        p = Producto.objects.filter(pk=pid).only("id", "nombre", "stock_actual").first()
+        p = Producto.objects.filter(pk=pid).only(
+            "id", "nombre", "stock_actual").first()
         if not p:
             return JsonResponse({"detail": f"producto_id {pid} no existe"}, status=404)
         disp = p.stock_actual or 0
         if qty > disp:
-            faltantes.append({"producto_id": pid, "nombre": p.nombre, "disponible": disp, "solicitado": qty})
+            faltantes.append(
+                {"producto_id": pid, "nombre": p.nombre, "disponible": disp, "solicitado": qty})
     if faltantes:
         return JsonResponse({"detail": "stock insuficiente", "items": faltantes}, status=400)
 
@@ -124,7 +130,8 @@ def ventas_create(request):
             disp = p.stock_actual or 0
             if qty > disp:
                 # Doble chequeo dentro de la transacción
-                raise transaction.TransactionManagementError("Stock cambió; intenta de nuevo.")
+                raise transaction.TransactionManagementError(
+                    "Stock cambió; intenta de nuevo.")
 
             precio_unit = _to_decimal(p.precio_unitario)
             subtotal = precio_unit * qty
@@ -174,6 +181,7 @@ def ventas_create(request):
             "items": resumen_items
         }
     }, status=201)
+
 
 @require_POST
 @csrf_protect
@@ -233,6 +241,7 @@ def inventario_add(request):
         }
     }, status=201)
 
+
 @csrf_exempt
 @require_POST
 def reset_data(request):
@@ -244,6 +253,186 @@ def reset_data(request):
         Usuario.objects.all().delete()
     return JsonResponse({"ok": True})
 
+@require_session
+@require_POST
+@csrf_protect
+def producto_update(request):
+    """
+    Edita un producto existente y (opcionalmente) ajusta su stock.
+
+    JSON esperado (todos opcionales salvo id):
+    {
+      "id": 123,                          # requerido
+      "nombre": "Nuevo nombre",           # opcional (renombrar)
+      "precio_unitario": 18500.0,         # opcional (>= 0)  -> se guarda como TEXT con 2 decimales
+      "stock_minimo": 10,                 # opcional (entero >= 0)
+      "descripcion": "texto...",          # opcional
+      "delta_stock": -3,                  # opcional (entero; puede ser negativo/positivo)
+      "motivo": "ajuste manual",          # opcional (por defecto: "ajuste inventario")
+      "fecha": "YYYY-MM-DD"               # opcional (por defecto: hoy)
+    }
+    """
+    try:
+        data = json.loads(request.body or b"{}")
+    except Exception:
+        return JsonResponse({"detail": "JSON inválido"}, status=400)
+
+    # --- id del producto ---
+    try:
+        pid = int(data.get("id"))
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "id requerido y debe ser entero"}, status=400)
+
+    # Campos opcionales
+    nombre        = (data.get("nombre") or "").strip()
+    descripcion   = (data.get("descripcion") or "").strip()
+    motivo        = (data.get("motivo") or "ajuste inventario").strip()
+    fecha_txt     = (data.get("fecha") or date.today().isoformat()).strip()
+
+    precio_raw    = data.get("precio_unitario", None)
+    stock_min_raw = data.get("stock_minimo", None)
+    delta_raw     = data.get("delta_stock", None)
+
+    # Validaciones básicas
+    if precio_raw is not None:
+        try:
+            precio_val = _to_decimal(precio_raw)
+            if precio_val < 0:
+                return JsonResponse({"detail": "precio_unitario debe ser ≥ 0"}, status=400)
+        except Exception:
+            return JsonResponse({"detail": "precio_unitario inválido"}, status=400)
+    else:
+        precio_val = None
+
+    if stock_min_raw is not None:
+        try:
+            stock_min_val = int(stock_min_raw)
+            if stock_min_val < 0:
+                return JsonResponse({"detail": "stock_minimo debe ser ≥ 0"}, status=400)
+        except (TypeError, ValueError):
+            return JsonResponse({"detail": "stock_minimo debe ser entero"}, status=400)
+    else:
+        stock_min_val = None
+
+    if delta_raw is not None:
+        try:
+            delta_val = int(delta_raw)
+        except (TypeError, ValueError):
+            return JsonResponse({"detail": "delta_stock debe ser entero"}, status=400)
+    else:
+        delta_val = 0
+
+    # Usuario que realiza el cambio (si está en sesión)
+    created_by = None
+    uid = request.session.get("uid")
+    if uid:
+        created_by = Usuario.objects.filter(pk=uid).first()
+
+    # --- Actualización atómica ---
+    with transaction.atomic():
+        p = Producto.objects.select_for_update().filter(pk=pid).first()
+        if not p:
+            return JsonResponse({"detail": "producto no existe"}, status=404)
+
+        # Renombrar
+        if nombre:
+            p.nombre = nombre
+
+        # Campos numéricos
+        if precio_val is not None:
+            p.precio_unitario = _money_str(precio_val)  # tu esquema lo guarda como TEXT con 2 decimales
+        if stock_min_val is not None:
+            p.stock_minimo = stock_min_val
+
+        # Descripción (permitir string vacío -> deja igual si no lo envían)
+        if "descripcion" in data:
+            p.descripcion = descripcion or ""
+
+        # Ajuste de stock (puede ser 0 / positivo / negativo)
+        if delta_val != 0:
+            nuevo_stock = (p.stock_actual or 0) + delta_val
+            if nuevo_stock < 0:
+                return JsonResponse({"detail": "stock insuficiente para el ajuste solicitado"}, status=400)
+
+            p.stock_actual = nuevo_stock
+            p.save(update_fields=["nombre", "precio_unitario", "stock_minimo", "descripcion", "stock_actual"])
+
+            Movimientoinventario.objects.create(
+                producto=p,
+                tipo="IN" if delta_val > 0 else "OUT",
+                cantidad=abs(delta_val),
+                fecha=fecha_txt,
+                motivo=motivo or ("ajuste +" if delta_val > 0 else "ajuste -"),
+                ref_venta=None,
+                created_by=created_by,
+            )
+        else:
+            p.save(update_fields=["nombre", "precio_unitario", "stock_minimo", "descripcion"])
+
+    return JsonResponse({
+        "ok": True,
+        "producto": {
+            "id": p.id,
+            "nombre": p.nombre,
+            "precio_unitario": p.precio_unitario,
+            "stock_actual": p.stock_actual,
+            "stock_minimo": p.stock_minimo,
+            "descripcion": getattr(p, "descripcion", ""),
+        }
+    }, status=200)
+
+@require_session
+@require_POST
+@csrf_protect
+def producto_delete(request):
+    """
+    Elimina un producto por completo (si no tiene ventas asociadas).
+
+    JSON esperado:
+    {
+      "id": 123           # requerido
+      // "force": true    # opcional: si quieres permitir borrar incluso con relaciones (NO recomendado)
+    }
+    """
+    # Parseo de JSON
+    try:
+        data = json.loads(request.body or b"{}")
+    except Exception:
+        return JsonResponse({"detail": "JSON inválido"}, status=400)
+
+    # id del producto
+    try:
+        pid = int(data.get("id"))
+    except (TypeError, ValueError):
+        return JsonResponse({"detail": "id requerido y debe ser entero"}, status=400)
+
+    force = bool(data.get("force", False))
+
+    with transaction.atomic():
+        # Bloqueo de fila para consistencia
+        p = Producto.objects.select_for_update().filter(pk=pid).first()
+        if not p:
+            return JsonResponse({"detail": "producto no existe"}, status=404)
+
+        # Verificar relaciones críticas (ventas)
+        # Si existen detalles de venta, bloquear borrado por defecto.
+        has_sales = Detalleventa.objects.filter(producto_id=p.id).exists()
+        if has_sales and not force:
+            return JsonResponse(
+                {"detail": "No se puede eliminar: el producto tiene ventas asociadas."},
+                status=409
+            )
+
+        # Si decides permitir force=True, primero elimina dependencias que no quieras conservar
+        # (por ejemplo, movimientos de inventario) para evitar huérfanos si el FK no es CASCADE.
+        # Si tus FKs ya están en CASCADE, esta eliminación explícita es opcional.
+        Movimientoinventario.objects.filter(producto_id=p.id).delete()
+
+        # Borrado del producto
+        p.delete()
+
+    return JsonResponse({"ok": True}, status=200)
+    
 @csrf_exempt
 @require_POST
 def seed_users(request):
@@ -269,9 +458,13 @@ def seed_users(request):
         status=201
     )
 
+
 @require_POST
 @csrf_protect
 def login_view(request):
+    print("DEBUG csrftoken (cookie):", request.COOKIES.get("csrftoken"))
+    print("DEBUG X-CSRFToken (header):", request.headers.get("X-CSRFToken"))
+    print("DEBUG get_token(request):", get_token(request))
     data = json.loads(request.body or {})
     username = data.get("username", "").strip()
     password = data.get("password", "")
