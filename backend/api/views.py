@@ -266,9 +266,9 @@ def producto_update(request):
       "nombre": "Nuevo nombre",           # opcional (renombrar)
       "precio_unitario": 18500.0,         # opcional (>= 0)  -> se guarda como TEXT con 2 decimales
       "stock_minimo": 10,                 # opcional (entero >= 0)
-      "descripcion": "texto...",          # opcional
+      "descripcion": "texto...",          # opcional, se guarda como motivo del movimiento si hay delta_stock
       "delta_stock": -3,                  # opcional (entero; puede ser negativo/positivo)
-      "motivo": "ajuste manual",          # opcional (por defecto: "ajuste inventario")
+      "motivo": "ajuste manual",          # opcional (si no hay descripcion, se usa como motivo del movimiento)
       "fecha": "YYYY-MM-DD"               # opcional (por defecto: hoy)
     }
     """
@@ -284,10 +284,10 @@ def producto_update(request):
         return JsonResponse({"detail": "id requerido y debe ser entero"}, status=400)
 
     # Campos opcionales
-    nombre        = (data.get("nombre") or "").strip()
-    descripcion   = (data.get("descripcion") or "").strip()
-    motivo        = (data.get("motivo") or "ajuste inventario").strip()
-    fecha_txt     = (data.get("fecha") or date.today().isoformat()).strip()
+    nombre      = (data.get("nombre") or "").strip()
+    descripcion = (data.get("descripcion") or "").strip()
+    motivo      = (data.get("motivo") or "").strip()
+    fecha_txt   = (data.get("fecha") or date.today().isoformat()).strip()
 
     precio_raw    = data.get("precio_unitario", None)
     stock_min_raw = data.get("stock_minimo", None)
@@ -340,34 +340,39 @@ def producto_update(request):
 
         # Campos numéricos
         if precio_val is not None:
-            p.precio_unitario = _money_str(precio_val)  # tu esquema lo guarda como TEXT con 2 decimales
+            # tu esquema lo guarda como TEXT con 2 decimales
+            p.precio_unitario = _money_str(precio_val)
         if stock_min_val is not None:
             p.stock_minimo = stock_min_val
-
-        # Descripción (permitir string vacío -> deja igual si no lo envían)
-        if "descripcion" in data:
-            p.descripcion = descripcion or ""
 
         # Ajuste de stock (puede ser 0 / positivo / negativo)
         if delta_val != 0:
             nuevo_stock = (p.stock_actual or 0) + delta_val
             if nuevo_stock < 0:
-                return JsonResponse({"detail": "stock insuficiente para el ajuste solicitado"}, status=400)
+                return JsonResponse(
+                    {"detail": "stock insuficiente para el ajuste solicitado"},
+                    status=400
+                )
 
             p.stock_actual = nuevo_stock
-            p.save(update_fields=["nombre", "precio_unitario", "stock_minimo", "descripcion", "stock_actual"])
+            p.save(update_fields=["nombre", "precio_unitario", "stock_minimo", "stock_actual"])
+
+            # La descripción va como motivo del movimiento (si viene).
+            # Si no hay descripción, usamos motivo; y si tampoco, un texto por defecto según el signo.
+            motivo_mov = descripcion or motivo or ("ajuste +" if delta_val > 0 else "ajuste -")
 
             Movimientoinventario.objects.create(
                 producto=p,
                 tipo="IN" if delta_val > 0 else "OUT",
                 cantidad=abs(delta_val),
                 fecha=fecha_txt,
-                motivo=motivo or ("ajuste +" if delta_val > 0 else "ajuste -"),
+                motivo=motivo_mov,
                 ref_venta=None,
                 created_by=created_by,
             )
         else:
-            p.save(update_fields=["nombre", "precio_unitario", "stock_minimo", "descripcion"])
+            # Solo cambios de nombre / precio / stock mínimo
+            p.save(update_fields=["nombre", "precio_unitario", "stock_minimo"])
 
     return JsonResponse({
         "ok": True,
@@ -377,7 +382,7 @@ def producto_update(request):
             "precio_unitario": p.precio_unitario,
             "stock_actual": p.stock_actual,
             "stock_minimo": p.stock_minimo,
-            "descripcion": getattr(p, "descripcion", ""),
+            # ya NO devolvemos descripcion porque no existe en el modelo Producto
         }
     }, status=200)
 
@@ -432,7 +437,7 @@ def producto_delete(request):
         p.delete()
 
     return JsonResponse({"ok": True}, status=200)
-    
+
 @csrf_exempt
 @require_POST
 def seed_users(request):
