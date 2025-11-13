@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../lib/api";
 
 /* ======================= Tipos ======================= */
-// Tipo basado en la respuesta de /api/productos/ y usado en inventario.tsx 
+// Tipo basado en la respuesta de /api/productos/ y usado en inventario.tsx
 type Producto = {
   id: number;
   nombre: string;
-  precio_unitario: number; // En el backend es TEXT, pero lo recibimos como número 
+  precio_unitario: number; // En el backend es TEXT, pero lo recibimos como número
   stock_actual: number;
   // stock_minimo no es necesario aquí, pero sí stock_actual
 };
@@ -21,12 +21,12 @@ type CartItem = {
 type ListResp = { items: Producto[]; count: number };
 
 /* ======================= Endpoints ======================= */
-const LIST_URL = "/api/productos/";         // 
-const CREATE_URL = "/api/ventas/create/";   // 
+const LIST_URL = "/api/productos/"; //
+const CREATE_URL = "/api/ventas/create/"; //
 
 /* ======================= Helpers (de inventario.tsx) ======================= */
 const money = (v: number | string) => {
-  const num = typeof v === 'string' ? parseFloat(v) : v;
+  const num = typeof v === "string" ? parseFloat(v) : v;
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
@@ -36,7 +36,9 @@ const money = (v: number | string) => {
 
 function getCookie(name: string) {
   const m = document.cookie.match(
-    new RegExp("(^|; )" + name.replace(/([$?*|{}\(\)\[\]\\\/\+^])/g, "\\$1") + "=([^;]*)")
+    new RegExp(
+      "(^|; )" + name.replace(/([$?*|{}\(\)\[\]\\\/\+^])/g, "\\$1") + "=([^;]*)"
+    )
   );
   return m ? decodeURIComponent(m[2]) : "";
 }
@@ -50,12 +52,15 @@ export default function Ventas() {
 
   // Estado para la UI
   const [q, setQ] = useState(""); // Búsqueda
-  const [cliente, setCliente] = useState(""); // Campo opcional de cliente 
+  const [cliente, setCliente] = useState(""); // Campo opcional de cliente
   const [cart, setCart] = useState<CartItem[]>([]); // Carrito
 
   // Estado para la API de envío
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<{
+    ok: boolean;
+    msg: string;
+  } | null>(null);
 
   // Cargar todos los productos al montar
   async function fetchProducts() {
@@ -83,8 +88,7 @@ export default function Ventas() {
     if (!term) return productos;
     return productos.filter(
       (p) =>
-        p.nombre.toLowerCase().includes(term) ||
-        String(p.id).includes(term)
+        p.nombre.toLowerCase().includes(term) || String(p.id).includes(term)
     );
   }, [q, productos]);
 
@@ -109,7 +113,9 @@ export default function Ventas() {
       // Si ya existe, incrementa la cantidad (si hay stock)
       const newQty = existing.cantidad + 1;
       if (newQty > p.stock_actual) {
-        alert(`Stock máximo alcanzado para ${p.nombre} (${p.stock_actual} unidades)`);
+        alert(
+          `Stock máximo alcanzado para ${p.nombre} (${p.stock_actual} unidades)`
+        );
         return;
       }
       setCart(
@@ -129,7 +135,7 @@ export default function Ventas() {
 
   const handleUpdateQty = (productId: number, newQty: number) => {
     setSubmitStatus(null); // Limpiar mensajes
-    
+
     // Si la cantidad es 0 o menos, elimina el item
     if (newQty <= 0) {
       setCart(cart.filter((item) => item.producto.id !== productId));
@@ -137,12 +143,16 @@ export default function Ventas() {
     }
 
     // Valida stock
-    const item = cart.find(i => i.producto.id === productId);
+    const item = cart.find((i) => i.producto.id === productId);
     if (item && newQty > item.producto.stock_actual) {
-      alert(`Stock máximo alcanzado para ${item.producto.nombre} (${item.producto.stock_actual} unidades)`);
+      alert(
+        `Stock máximo alcanzado para ${item.producto.nombre} (${item.producto.stock_actual} unidades)`
+      );
       setCart(
         cart.map((i) =>
-          i.producto.id === productId ? { ...i, cantidad: item.producto.stock_actual } : i
+          i.producto.id === productId
+            ? { ...i, cantidad: item.producto.stock_actual }
+            : i
         )
       );
       return;
@@ -166,14 +176,14 @@ export default function Ventas() {
 
   const handleSubmitVenta = async () => {
     if (cart.length === 0) return;
-    
+
     setIsSubmitting(true);
     setSubmitStatus(null);
     const csrf = getCookie("csrftoken");
 
     const payload = {
-      cliente: cliente.trim() || null, // RF-05: Cliente opcional 
-      items: cart.map(item => ({
+      cliente: cliente.trim() || null, // RF-05: Cliente opcional
+      items: cart.map((item) => ({
         producto_id: item.producto.id,
         cantidad: item.cantidad,
       })),
@@ -188,24 +198,42 @@ export default function Ventas() {
       const data = await res.json();
 
       if (!res.ok) {
-        // El backend nos avisa si falta stock 
+        // El backend nos avisa si falta stock
         const detail = data.detail || "No se pudo registrar la venta.";
         let itemsMsg = "";
         if (data.items) {
-          itemsMsg = data.items.map((it: any) => 
-            `\n- ${it.nombre}: ${it.solicitado} pedidas, ${it.disponible} en stock.`
-          ).join("");
+          itemsMsg = data.items
+            .map(
+              (it: any) =>
+                `\n- ${it.nombre}: ${it.solicitado} pedidas, ${it.disponible} en stock.`
+            )
+            .join("");
         }
         throw new Error(detail + itemsMsg);
+      }
+
+      // ↓ Nuevo: descarga PDF si vino en la respuesta
+      if (data?.invoice?.base64) {
+        const mime = data.invoice.mime || "application/pdf";
+        const filename =
+          data.invoice.filename || `factura_${data?.venta?.id || ""}.pdf`;
+        const a = document.createElement("a");
+        a.href = `data:${mime};base64,${data.invoice.base64}`;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       }
 
       // ¡Éxito!
       setSubmitStatus({ ok: true, msg: `Venta #${data.venta.id} registrada.` });
       handleCancel(); // Limpiar el formulario
-      fetchProducts(); // RF-08: Recargar productos para actualizar stock 
-
+      fetchProducts(); // RF-08: Recargar productos para actualizar stock
     } catch (err: any) {
-      setSubmitStatus({ ok: false, msg: err.message || "Error de red al confirmar la venta." });
+      setSubmitStatus({
+        ok: false,
+        msg: err.message || "Error de red al confirmar la venta.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -250,7 +278,9 @@ export default function Ventas() {
                 <button
                   onClick={() => handleAddToCart(p)}
                   disabled={p.stock_actual <= 0}
-                  style={p.stock_actual <= 0 ? styles.btnDisabled : styles.btnAgregar}
+                  style={
+                    p.stock_actual <= 0 ? styles.btnDisabled : styles.btnAgregar
+                  }
                 >
                   {p.stock_actual <= 0 ? "Sin Stock" : "Agregar"}
                 </button>
@@ -294,9 +324,11 @@ export default function Ventas() {
           </div>
           <div style={styles.cartItems}>
             {resumen.items.length === 0 && (
-              <div style={styles.emptyText}>No hay productos en el resumen.</div>
+              <div style={styles.emptyText}>
+                No hay productos en el resumen.
+              </div>
             )}
-            {resumen.items.map(item => (
+            {resumen.items.map((item) => (
               <CartItemRow
                 key={item.producto.id}
                 item={item}
@@ -321,7 +353,7 @@ export default function Ventas() {
 
         {/* Acciones */}
         <div style={styles.actionsFooter}>
-          <button 
+          <button
             onClick={handleCancel}
             style={styles.btnSecondary}
             disabled={isSubmitting}
@@ -330,7 +362,11 @@ export default function Ventas() {
           </button>
           <button
             onClick={handleSubmitVenta}
-            style={(isSubmitting || cart.length === 0) ? styles.btnDisabled : styles.btnPrimary}
+            style={
+              isSubmitting || cart.length === 0
+                ? styles.btnDisabled
+                : styles.btnPrimary
+            }
             disabled={isSubmitting || cart.length === 0}
           >
             {isSubmitting ? "Confirmando..." : "Confirmar Venta"}
@@ -350,7 +386,7 @@ function CartItemRow({
   onUpdateQty: (id: number, qty: number) => void;
 }) {
   const p = item.producto;
-  
+
   const handleQtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val === "") {
@@ -367,19 +403,19 @@ function CartItemRow({
     <div style={styles.cartRow}>
       <div style={styles.cartRowName}>{p.nombre}</div>
       <div style={styles.cartRowQty}>
-        <button 
-          onClick={() => onUpdateQty(p.id, item.cantidad - 1)} 
+        <button
+          onClick={() => onUpdateQty(p.id, item.cantidad - 1)}
           style={styles.btnQty}
         >
           -
         </button>
-        <input 
-          type="number" 
-          value={item.cantidad} 
+        <input
+          type="number"
+          value={item.cantidad}
           onChange={handleQtyChange}
           style={styles.inputQty}
         />
-        <button 
+        <button
           onClick={() => onUpdateQty(p.id, item.cantidad + 1)}
           style={styles.btnQty}
         >
@@ -390,7 +426,6 @@ function CartItemRow({
     </div>
   );
 }
-
 
 /* ======================= Estilos (Basados en Mockup) ======================= */
 // Agrupamos los estilos para mantener el JSX limpio
@@ -519,7 +554,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
   },
   cartRowName: { fontSize: 14, fontWeight: 500 },
-  cartRowQty: { display: "flex", alignItems: "center", justifyContent: "center" },
+  cartRowQty: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   inputQty: {
     width: 40,
     textAlign: "center",
@@ -530,18 +569,23 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
   },
   btnQty: {
-  border: "1px solid #ccc",
-  background: "#f0f0f0", // Color del botón "Cancelar"
-  color: "#333",
-  width: 28,             // Un poco más grande
-  height: 28,            // Un poco más grande
-  borderRadius: 8,         // Bordes más suaves
-  cursor: "pointer",
-  fontSize: 16,            // Símbolo más grande
-  fontWeight: 600,
-  padding: 0,              // Clave para centrar el símbolo
-},
-  cartRowSubtotal: { fontSize: 14, fontWeight: 600, textAlign: "right", paddingRight: 4 },
+    border: "1px solid #ccc",
+    background: "#f0f0f0", // Color del botón "Cancelar"
+    color: "#333",
+    width: 28, // Un poco más grande
+    height: 28, // Un poco más grande
+    borderRadius: 8, // Bordes más suaves
+    cursor: "pointer",
+    fontSize: 16, // Símbolo más grande
+    fontWeight: 600,
+    padding: 0, // Clave para centrar el símbolo
+  },
+  cartRowSubtotal: {
+    fontSize: 14,
+    fontWeight: 600,
+    textAlign: "right",
+    paddingRight: 4,
+  },
   totalRow: {
     display: "flex",
     justifyContent: "space-between",
