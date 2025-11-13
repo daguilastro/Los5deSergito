@@ -10,6 +10,7 @@ import Alertas from "./pages/alertas";
 
 // Páginas
 import LoginPage from "./pages/login_page";
+import Logout from "./pages/logout";
 
 export default function App() {
   const user = { name: "Admin", role: "Administrador" }; // opcional
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/inventario"       element={<Inventario />} />
           <Route path="/ventas" element={<Ventas />} />
           <Route path="/alertas" element={<Alertas />} />
+          <Route path="/logout" element={<Logout />} />
         </Route>
           
         <Route path="*" element={<Navigate to="/login" replace />} />

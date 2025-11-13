@@ -20,7 +20,7 @@ function getCurrentUser(): {
 type Producto = {
   id: number;
   nombre: string;
-  precio_unitario: number; // en backend es TEXT, aquí lo tratamos como número
+  precio_unitario: number;
   stock_actual: number;
   stock_minimo: number;
   descripcion?: string | null;
@@ -48,6 +48,28 @@ function getCookie(name: string) {
   );
   return m ? decodeURIComponent(m[2]) : "";
 }
+
+/* ======================= SVG Icons ======================= */
+const SearchIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="m21 21-4.35-4.35"/>
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+);
+
+const EditIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
 
 /* ======================= Página ======================= */
 export default function Inventario() {
@@ -121,8 +143,8 @@ export default function Inventario() {
     );
 
   return (
-    <div style={{ padding: 16 }}>
-      <h1 style={{ fontSize: 30, margin: "8px 0 18px 4px" }}>
+    <div style={{ padding: 16, animation: "fadeIn 0.4s ease" }}>
+      <h1 style={{ fontSize: 30, margin: "8px 0 18px 4px", fontWeight: 700 }}>
         Inventario de Productos
       </h1>
 
@@ -140,14 +162,18 @@ export default function Inventario() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              background: "#f9efec",
+              gap: 10,
+              background: "#fff",
+              border: "1px solid #e6e6e6",
               borderRadius: 12,
-              padding: "10px 12px",
+              padding: "10px 14px",
               width: "100%",
+              transition: "border-color 0.2s ease",
             }}
+            onFocus={(e) => e.currentTarget.style.borderColor = "#e27641"}
+            onBlur={(e) => e.currentTarget.style.borderColor = "#e6e6e6"}
           >
-            <span>🔎</span>
+            <SearchIcon />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -172,17 +198,34 @@ export default function Inventario() {
             isVendedor ? "Solo lectura para vendedores" : "Agregar Producto"
           }
           style={{
-            background: "#e27641",
+            background: isVendedor ? "#ccc" : "#e27641",
             color: "#fff",
             border: "none",
-            padding: "10px 16px",
-            borderRadius: 14,
+            padding: "10px 18px",
+            borderRadius: 12,
             fontWeight: 700,
-            opacity: isVendedor ? 0.6 : 1,
             cursor: isVendedor ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            transition: "all 0.2s ease",
+            boxShadow: isVendedor ? "none" : "0 4px 12px rgba(226, 118, 65, 0.2)",
+          }}
+          onMouseEnter={(e) => {
+            if (!isVendedor) {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 6px 16px rgba(226, 118, 65, 0.3)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isVendedor) {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(226, 118, 65, 0.2)";
+            }
           }}
         >
-          ➕ Agregar Producto
+          <PlusIcon />
+          Agregar Producto
         </button>
       </div>
 
@@ -192,15 +235,18 @@ export default function Inventario() {
           background: "#fff",
           borderRadius: 16,
           boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
+          overflow: "hidden",
         }}
       >
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "120px 1fr 160px 120px 120px 120px",
-            padding: "14px 18px",
+            padding: "16px 18px",
             color: "#6b6b6b",
             fontWeight: 700,
+            background: "#fafafa",
+            fontSize: 13,
           }}
         >
           <div>ID</div>
@@ -211,27 +257,31 @@ export default function Inventario() {
           <div>Acciones</div>
         </div>
         <div>
-          {filtered.map((p) => (
+          {filtered.map((p, idx) => (
             <div
               key={p.id}
               style={{
                 display: "grid",
                 gridTemplateColumns: "120px 1fr 160px 120px 120px 120px",
-                padding: "14px 18px",
+                padding: "16px 18px",
                 borderTop: "1px solid #f0f0f0",
                 alignItems: "center",
+                transition: "background 0.2s ease",
+                animation: `slideIn 0.3s ease ${idx * 0.03}s backwards`,
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "#fafafa"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
             >
-              <div style={{ fontWeight: 700 }}>
+              <div style={{ fontWeight: 700, color: "#666" }}>
                 {String(p.id).padStart(6, "0")}
               </div>
-              <div>{p.nombre}</div>
+              <div style={{ fontWeight: 500 }}>{p.nombre}</div>
               <div>{money(p.precio_unitario)}</div>
               <div
                 style={{
                   fontWeight: 700,
                   color:
-                    p.stock_actual < p.stock_minimo ? "#c0392b" : undefined,
+                    p.stock_actual < p.stock_minimo ? "#c0392b" : "#1f8a36",
                 }}
               >
                 {p.stock_actual}
@@ -250,15 +300,24 @@ export default function Inventario() {
                   onClick={() => {
                     if (!isVendedor) setEditTarget(p);
                   }}
+                  onMouseEnter={(e) => {
+                    if (!isVendedor) {
+                      e.currentTarget.style.background = "#f0f0f0";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
                 >
-                  ✎
+                  <EditIcon />
                 </button>
-                {/* Eliminar desde modal (con confirmación) */}
               </div>
             </div>
           ))}
           {filtered.length === 0 && (
-            <div style={{ padding: 18, color: "#888" }}>No hay resultados.</div>
+            <div style={{ padding: 18, color: "#888", textAlign: "center" }}>
+              No hay resultados.
+            </div>
           )}
         </div>
       </div>
@@ -287,6 +346,17 @@ export default function Inventario() {
           }}
         />
       )}
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -354,7 +424,7 @@ function AddProductModal({
 
   return (
     <div style={modalBackdrop}>
-      <div style={modalCard}>
+      <div style={{...modalCard, animation: "modalSlideIn 0.3s ease"}}>
         <Header title="Agregar Producto" onClose={onClose} />
         <div style={{ color: "#666", marginBottom: 12 }}>
           Crea un producto con su stock inicial.
@@ -411,6 +481,12 @@ function AddProductModal({
           submitText="Crear"
         />
       </div>
+      <style>{`
+        @keyframes modalSlideIn {
+          from { opacity: 0; transform: scale(0.95) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -427,7 +503,7 @@ function EditProductModal({
   onUpdated: (p: Producto) => void;
   onDeleted: () => void;
 }) {
-  const [deltaStock, setDeltaStock] = useState("0"); // puede ser negativo
+  const [deltaStock, setDeltaStock] = useState("0");
   const [precio, setPrecio] = useState(String(product.precio_unitario ?? 0));
   const [stockMin, setStockMin] = useState(String(product.stock_minimo ?? 0));
   const [descripcion, setDescripcion] = useState(product.descripcion ?? "");
@@ -457,7 +533,7 @@ function EditProductModal({
 
     const payload = {
       id: product.id,
-      delta_stock: delta, // +N o -N
+      delta_stock: delta,
       precio_unitario: precioN,
       stock_minimo: minN,
       descripcion: (descripcion ?? "").trim() || null,
@@ -506,7 +582,7 @@ function EditProductModal({
 
   return (
     <div style={modalBackdrop}>
-      <div style={modalCard}>
+      <div style={{...modalCard, animation: "modalSlideIn 0.3s ease"}}>
         <Header title={`Editar • ${product.nombre}`} onClose={onClose} />
 
         {/* Ficha con valores actuales */}
@@ -514,10 +590,10 @@ function EditProductModal({
           style={{
             display: "grid",
             gap: 10,
-            background: "#f9f2ef",
+            background: "linear-gradient(135deg, #f9f2ef 0%, #fef6f2 100%)",
             border: "1px solid #f1d9cd",
             borderRadius: 14,
-            padding: 12,
+            padding: 14,
             marginBottom: 12,
           }}
         >
@@ -528,13 +604,13 @@ function EditProductModal({
               alignItems: "center",
             }}
           >
-            <div style={{ fontWeight: 800, color: "#e27641" }}>
+            <div style={{ fontWeight: 800, color: "#e27641", fontSize: 16 }}>
               {product.nombre}
             </div>
             <span
               style={{
-                fontSize: 12,
-                padding: "4px 8px",
+                fontSize: 11,
+                padding: "4px 10px",
                 borderRadius: 20,
                 background:
                   product.stock_actual < product.stock_minimo
@@ -549,6 +625,7 @@ function EditProductModal({
                     ? "#f5c2c7"
                     : "#b7e2c3"
                 }`,
+                fontWeight: 600,
               }}
             >
               {product.stock_actual < product.stock_minimo
@@ -594,9 +671,9 @@ function EditProductModal({
           ) : null}
         </div>
 
-        <div style={{ color: "#666", marginBottom: 12 }}>
+        <div style={{ color: "#666", marginBottom: 12, fontSize: 14 }}>
           Ajusta stock, precio y mínimos. Para retirar unidades, usa un valor
-          negativo en “Ajuste de stock”.
+          negativo en "Ajuste de stock".
         </div>
 
         {/* Formulario */}
@@ -681,7 +758,7 @@ function EditProductModal({
         {/* Confirmación de borrado */}
         {asking && (
           <div style={confirmWrap}>
-            <div style={confirmCard}>
+            <div style={{...confirmCard, animation: "modalSlideIn 0.2s ease"}}>
               <div style={{ fontWeight: 800, marginBottom: 8 }}>
                 ¿Eliminar este producto?
               </div>
@@ -709,6 +786,12 @@ function EditProductModal({
           </div>
         )}
       </div>
+      <style>{`
+        @keyframes modalSlideIn {
+          from { opacity: 0; transform: scale(0.95) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -721,16 +804,17 @@ function Header({ title, onClose }: { title: string; onClose: () => void }) {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 8,
+        marginBottom: 12,
       }}
     >
-      <h2 style={{ margin: 0 }}>{title}</h2>
+      <h2 style={{ margin: 0, fontWeight: 700 }}>{title}</h2>
       <button onClick={onClose} style={iconBtn}>
         ✕
       </button>
     </div>
   );
 }
+
 function Field({
   label,
   children,
@@ -740,11 +824,12 @@ function Field({
 }) {
   return (
     <label style={{ display: "grid", gap: 6 }}>
-      <span style={{ fontSize: 14, color: "#555" }}>{label}</span>
+      <span style={{ fontSize: 13, color: "#555", fontWeight: 600 }}>{label}</span>
       {children}
     </label>
   );
 }
+
 function Alert({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -752,14 +837,24 @@ function Alert({ children }: { children: React.ReactNode }) {
         marginTop: 12,
         color: "#b01010",
         background: "#fdeaea",
-        padding: 10,
+        padding: 12,
         borderRadius: 10,
+        fontSize: 14,
+        animation: "shake 0.3s ease",
       }}
     >
       {children}
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-4px); }
+          75% { transform: translateX(4px); }
+        }
+      `}</style>
     </div>
   );
 }
+
 function StatChip({ label, value }: { label: string; value: string }) {
   return (
     <div
@@ -772,11 +867,12 @@ function StatChip({ label, value }: { label: string; value: string }) {
         gap: 4,
       }}
     >
-      <div style={{ fontSize: 12, color: "#8b6f65" }}>{label}</div>
-      <div style={{ fontWeight: 800 }}>{value}</div>
+      <div style={{ fontSize: 11, color: "#8b6f65", fontWeight: 500 }}>{label}</div>
+      <div style={{ fontWeight: 800, fontSize: 15 }}>{value}</div>
     </div>
   );
 }
+
 function Footer({
   busy,
   onClose,
@@ -823,7 +919,9 @@ const iconBtn: React.CSSProperties = {
   cursor: "pointer",
   fontSize: 16,
   borderRadius: 8,
+  transition: "background 0.2s ease",
 };
+
 const inputStyle: React.CSSProperties = {
   borderRadius: 12,
   border: "1px solid #e6e6e6",
@@ -831,43 +929,52 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14,
   outline: "none",
   background: "#fff",
+  transition: "border-color 0.2s ease",
 };
+
 const btn: React.CSSProperties = {
   border: "none",
   borderRadius: 12,
   padding: "10px 16px",
   fontWeight: 700,
   cursor: "pointer",
+  transition: "all 0.2s ease",
 };
+
 const modalBackdrop: React.CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(0,0,0,0.35)",
+  background: "rgba(0,0,0,0.4)",
   display: "grid",
   placeItems: "center",
   zIndex: 1000,
+  backdropFilter: "blur(2px)",
 };
+
 const modalCard: React.CSSProperties = {
   width: 500,
   maxWidth: "92vw",
   background: "#fff",
   borderRadius: 16,
-  boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
-  padding: 18,
+  boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+  padding: 20,
 };
+
 const confirmWrap: React.CSSProperties = {
   position: "fixed",
   inset: 0,
   display: "grid",
   placeItems: "center",
-  background: "rgba(0,0,0,0.35)",
+  background: "rgba(0,0,0,0.4)",
   zIndex: 1100,
+  backdropFilter: "blur(2px)",
 };
+
 const confirmCard: React.CSSProperties = {
   background: "#fff",
   borderRadius: 14,
   padding: 18,
   width: 360,
   maxWidth: "92vw",
-  boxShadow: "0 15px 35px rgba(0,0,0,0.25)",
+  boxShadow: "0 15px 40px rgba(0,0,0,0.3)",
 };
