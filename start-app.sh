@@ -88,7 +88,7 @@ fi
 echo "Ejecutando migraciones de Django..."
 cd "$BACKEND_DIR"
 "$PYTHON" manage.py migrate --noinput
-
+"$PYTHON" manage.py seed_users
 # --- arrancar backend en background ---
 if [ -f "$BACK_PID" ]; then
   OLD_PID="$(cat "$BACK_PID" || true)"
