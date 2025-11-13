@@ -171,5 +171,6 @@ export default function MainLayout({ user: propUser }: MainLayoutProps) {
         </main>
       </section>
     </div>
+    
   );
 }
