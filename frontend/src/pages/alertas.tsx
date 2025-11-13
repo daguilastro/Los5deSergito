@@ -2,6 +2,20 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 
+/* ======================= Helper para leer usuario ======================= */
+function getCurrentUser(): {
+  id: number;
+  username: string;
+  rol: string;
+} | null {
+  try {
+    const raw = sessionStorage.getItem("user") || localStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 /* ======================= Tipos ======================= */
 type ProductoAlerta = {
   id: number;
@@ -14,13 +28,13 @@ type ProductoAlerta = {
 type ListResp = { items: ProductoAlerta[]; count: number };
 
 /* ======================= Endpoints ======================= */
-const ALERTAS_URL = "/api/inventario/alertas/"; //
-const ADD_STOCK_URL = "/api/productos/add/"; //
+const ALERTAS_URL = "/api/inventario/alertas/";
+const ADD_STOCK_URL = "/api/productos/add/";
 
 /* ======================= Helpers ======================= */
 function getCookie(name: string) {
   const m = document.cookie.match(
-    new RegExp("(^|; )" + name.replace(/([$?*|{}()[\]\\/+^])/g, "\\$1") + "=([^;]*)")
+    new RegExp("(^|; )" + name.replace(/([$?*|{}()[\]\\\/+^])/g, "\\$1") + "=([^;]*)")
   );
   return m ? decodeURIComponent(m[2]) : "";
 }
@@ -30,9 +44,10 @@ export default function Alertas() {
   const [items, setItems] = useState<ProductoAlerta[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Producto seleccionado para reabastecer
   const [targetProduct, setTargetProduct] = useState<ProductoAlerta | null>(null);
+  
+  const currentUser = getCurrentUser();
+  const isVendedor = (currentUser?.rol || "").toLowerCase() === "vendedor";
 
   async function fetchAlertas() {
     try {
@@ -49,15 +64,13 @@ export default function Alertas() {
     }
   }
 
-  // Cargar alertas al montar
   useEffect(() => {
     fetchAlertas();
   }, []);
 
-  // Callback para cuando el modal de reabastecer es exitoso
   const handleSuccessReabastecer = () => {
-    setTargetProduct(null); // Cierra el modal
-    fetchAlertas(); // Vuelve a cargar la lista de alertas
+    setTargetProduct(null);
+    fetchAlertas();
   };
 
   if (loading) return <div style={{ padding: 16 }}>Cargando alertas...</div>;
@@ -80,13 +93,13 @@ export default function Alertas() {
               key={p.id}
               product={p}
               onReabastecer={() => setTargetProduct(p)}
+              isVendedor={isVendedor}
             />
           ))}
         </div>
       )}
 
-      {/* Modal de Reabastecimiento */}
-      {targetProduct && (
+      {targetProduct && !isVendedor && (
         <ReabastecerModal
           product={targetProduct}
           onClose={() => setTargetProduct(null)}
@@ -101,29 +114,55 @@ export default function Alertas() {
 function AlertCard({
   product,
   onReabastecer,
+  isVendedor,
 }: {
   product: ProductoAlerta;
   onReabastecer: () => void;
+  isVendedor: boolean;
 }) {
-  // Lógica de criticidad basada en el mockup
   const isCritico = product.stock_actual <= 2;
-  const tagStyle = isCritico ? styles.tagCritico : styles.tagAdvertencia;
-  const tagText = isCritico ? "Crítico" : "Advertencia";
 
   return (
     <div style={styles.card}>
       <h2 style={styles.cardTitle}>{product.nombre}</h2>
-      <div style={styles.cardStat}>
-        Stock Actual: <span style={{ fontWeight: 800 }}>{product.stock_actual}</span>
+      
+      {/* Stock info sin recuadros */}
+      <div style={styles.stockContainer}>
+        <div style={styles.stockItem}>
+          <div style={styles.stockLabel}>Stock Actual:</div>
+          <div style={{
+            ...styles.stockValue,
+            color: isCritico ? "#c0392b" : "#a37b0a"
+          }}>
+            {product.stock_actual}
+          </div>
+        </div>
+        <div style={styles.stockItem}>
+          <div style={styles.stockLabel}>Stock Mínimo:</div>
+          <div style={styles.stockValue}>{product.stock_minimo}</div>
+        </div>
       </div>
-      <div style={styles.cardStat}>
-        Stock Mínimo: <span>{product.stock_minimo}</span>
+
+      {/* Tag sin recuadro, solo texto coloreado */}
+      <div style={{
+        ...styles.tagText,
+        color: isCritico ? "#c0392b" : "#a37b0a"
+      }}>
+        {isCritico ? "Crítico" : "Advertencia"}
       </div>
-      <div style={{ marginTop: 8 }}>
-        <span style={tagStyle}>{tagText}</span>
-      </div>
-      <button onClick={onReabastecer} style={styles.btnReabastecer}>
-        Reabastecer
+
+      <button 
+        onClick={onReabastecer} 
+        disabled={isVendedor}
+        style={{
+          ...styles.btnReabastecer,
+          opacity: isVendedor ? 0.5 : 1,
+          cursor: isVendedor ? "not-allowed" : "pointer",
+          background: isVendedor ? "#ccc" : brandColor,
+        }}
+        title={isVendedor ? "Solo administradores pueden reabastecer" : "Reabastecer producto"}
+      >
+        {isVendedor ? "🔒 Restringido" : "Reabastecer"}
       </button>
     </div>
   );
@@ -157,7 +196,6 @@ function ReabastecerModal({
       return;
     }
 
-    // Payload para /api/productos/add/
     const payload = {
       producto_id: product.id,
       cantidad: cantNum,
@@ -175,7 +213,7 @@ function ReabastecerModal({
         setMsg((await res.text()) || "No se pudo agregar el stock.");
         return;
       }
-      onSuccess(); // Llama al callback de éxito
+      onSuccess();
     } catch {
       setMsg("Error de red.");
     } finally {
@@ -237,7 +275,11 @@ function ReabastecerModal({
 const brandColor = "#d86f3a";
 
 const styles: Record<string, React.CSSProperties> = {
-  h1: { fontSize: 30, margin: "8px 0 18px 4px" },
+  h1: { 
+    fontSize: 30, 
+    margin: "8px 0 18px 4px",
+    fontWeight: 700,
+  },
   errorBox: {
     padding: 16,
     color: "#b01010",
@@ -263,39 +305,42 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #f0f0f0",
     boxShadow: "0 8px 25px rgba(0,0,0,0.05)",
     padding: 20,
+    transition: "all 0.2s ease",
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: 700,
-    margin: "0 0 12px 0",
+    margin: "0 0 16px 0",
     color: "#222",
   },
-  cardStat: {
+  stockContainer: {
+    display: "flex",
+    gap: 24,
+    marginBottom: 12,
+  },
+  stockItem: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 6,
+  },
+  stockLabel: {
     fontSize: 14,
-    color: "#555",
-    lineHeight: 1.6,
+    color: "#666",
+    fontWeight: 400,
   },
-  tagAdvertencia: {
-    background: "#fdf8e7",
-    color: "#a37b0a",
-    border: "1px solid #fceec9",
-    padding: "4px 8px",
-    borderRadius: 20,
-    fontSize: 12,
-    fontWeight: 700,
+  stockValue: {
+    fontSize: 18,
+    fontWeight: 800,
+    color: "#222",
   },
-  tagCritico: {
-    background: "#fdeaea",
-    color: "#a61d24",
-    border: "1px solid #f5c2c7",
-    padding: "4px 8px",
-    borderRadius: 20,
-    fontSize: 12,
-    fontWeight: 700,
+  tagText: {
+    fontSize: 14,
+    fontWeight: 600,
+    marginBottom: 16,
+    display: "block",
   },
   btnReabastecer: {
     width: "100%",
-    marginTop: 18,
     border: "none",
     background: brandColor,
     color: "#fff",
@@ -303,6 +348,8 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 12,
     fontWeight: 700,
     cursor: "pointer",
+    fontSize: 15,
+    transition: "all 0.2s ease",
   },
   // --- Estilos de Modal (reutilizados) ---
   modalBackdrop: {
