@@ -19,7 +19,7 @@ Facilitar la gestión de stock, ventas y clientes mediante una aplicación local
 
 ---
 
-## Estructura principal (resumen)
+## Estructura principal
 - `backend/`  
   - `manage.py`  
   - `backend/` (settings, wsgi, etc.)  
@@ -54,7 +54,7 @@ Facilitar la gestión de stock, ventas y clientes mediante una aplicación local
 
 ---
 
-## Ejecutar en desarrollo (pasos listos para copiar/pegar)
+## Ejecutar en desarrollo 
 
 1) Preparar entorno Python y dependencias
 ```bash
@@ -92,7 +92,7 @@ El servidor de Vite arranca con hot-reload; la salida indicará la URL (por ejem
 
 ---
 
-## Ejecutar para demo / producción local (resumen)
+## Ejecutar para demo / producción local
 1. Construir frontend:
 ```bash
 cd frontend
