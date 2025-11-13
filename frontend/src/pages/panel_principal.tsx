@@ -1,6 +1,6 @@
 // src/pages/panel_principal.tsx
 import { useEffect, useState, useMemo } from "react";
-import { apiFetch } from "../lib/api"; // ajusta la ruta si tu wrapper está en otro sitio
+import { apiFetch } from "../lib/api";
 
 // === Tipos que devuelve tu API ===
 type DashboardSummary = {
@@ -11,7 +11,23 @@ type DashboardSummary = {
   top_productos_mes: { producto: string; unidades: number }[];
 };
 
-const API_URL = "/api/dashboard/summary/"; // ajusta si tu endpoint difiere
+const API_URL = "/api/dashboard/summary/";
+
+/* ===== SVG Icons ===== */
+const TrendingUpIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+    <polyline points="17 6 23 6 23 12"/>
+  </svg>
+);
+
+const PackageIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+    <line x1="12" y1="22.08" x2="12" y2="12"/>
+  </svg>
+);
 
 export default function PanelPrincipal() {
   const [data, setData] = useState<DashboardSummary | null>(null);
@@ -45,7 +61,7 @@ export default function PanelPrincipal() {
 
   if (loading) {
     return (
-      <div style={{ padding: 16 }}>
+      <div style={{ padding: 16, animation: "fadeIn 0.3s ease" }}>
         <PageTitle>Pagina Principal</PageTitle>
         <SkeletonRow />
         <SkeletonRow />
@@ -55,7 +71,7 @@ export default function PanelPrincipal() {
 
   if (errorMsg) {
     return (
-      <div style={{ padding: 16 }}>
+      <div style={{ padding: 16, animation: "fadeIn 0.3s ease" }}>
         <PageTitle>Pagina Principal</PageTitle>
         <div style={{ color: "#b01010", background: "#fdeaea", padding: 12, borderRadius: 10 }}>
           {errorMsg}
@@ -71,11 +87,16 @@ export default function PanelPrincipal() {
   const num = (v: number) => new Intl.NumberFormat("es-CO").format(v);
 
   return (
-    <div style={{ padding: 16 }}>
+    <div style={{ padding: 16, animation: "fadeIn 0.4s ease" }}>
       <PageTitle>Pagina Principal</PageTitle>
 
       {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(280px, 1fr))", gap: 16, marginBottom: 28 }}>
+      <div style={{ 
+        display: "grid", 
+        gridTemplateColumns: "repeat(2, minmax(280px, 1fr))", 
+        gap: 16, 
+        marginBottom: 28 
+      }}>
         <KpiCard
           title="Ventas del Mes"
           main={money(data.ventas_mes.value)}
@@ -87,13 +108,13 @@ export default function PanelPrincipal() {
                 "% vs. mes anterior"
           }
           subtitleColor={data.ventas_mes.delta_pct_vs_prev == null ? "#666" : data.ventas_mes.delta_pct_vs_prev >= 0 ? "#1f8a36" : "#c0392b"}
-          icon="📈"
+          icon={<TrendingUpIcon />}
         />
         <KpiCard
           title="Productos en Inventario"
           main={`${num(data.inventario.units)} unidades`}
           subtitle={data.ventas_mes.delta_pct_vs_prev == null ? " " : ""}
-          icon="📦"
+          icon={<PackageIcon />}
         />
       </div>
 
@@ -122,11 +143,11 @@ export default function PanelPrincipal() {
 /* ============ Componentes UI simples ============ */
 
 function PageTitle({ children }: { children: React.ReactNode }) {
-  return <h1 style={{ fontSize: 30, margin: "8px 0 18px 4px" }}>{children}</h1>;
+  return <h1 style={{ fontSize: 30, margin: "8px 0 18px 4px", fontWeight: 700 }}>{children}</h1>;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 style={{ fontSize: 26, margin: "6px 0 14px 4px" }}>{children}</h2>;
+  return <h2 style={{ fontSize: 26, margin: "6px 0 14px 4px", fontWeight: 700 }}>{children}</h2>;
 }
 
 function KpiCard({
@@ -140,40 +161,51 @@ function KpiCard({
   main: string;
   subtitle?: string;
   subtitleColor?: string;
-  icon?: string;
+  icon?: React.ReactNode;
 }) {
   return (
     <div
       style={{
         background: "#fff",
         borderRadius: 16,
-        padding: 18,
+        padding: 20,
         boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
         display: "grid",
         gridTemplateColumns: "1fr auto",
-        gap: 12,
+        gap: 16,
         alignItems: "start",
+        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+        cursor: "default",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = "0 12px 35px rgba(0,0,0,0.1)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.06)";
       }}
     >
       <div>
-        <div style={{ color: "#6b6b6b", fontSize: 14 }}>{title}</div>
-        <div style={{ fontSize: 36, fontWeight: 800, marginTop: 4 }}>{main}</div>
+        <div style={{ color: "#6b6b6b", fontSize: 14, fontWeight: 500 }}>{title}</div>
+        <div style={{ fontSize: 36, fontWeight: 800, marginTop: 8, color: "#1a1a1a" }}>{main}</div>
         {subtitle ? (
-          <div style={{ fontSize: 12, color: subtitleColor ?? "#8b8b8b", marginTop: 6 }}>{subtitle}</div>
+          <div style={{ fontSize: 12, color: subtitleColor ?? "#8b8b8b", marginTop: 8, fontWeight: 500 }}>
+            {subtitle}
+          </div>
         ) : null}
       </div>
       {icon ? (
         <div
           style={{
-            background: "#fde1d5",
+            background: "linear-gradient(135deg, #fde1d5 0%, #fceee5 100%)",
             color: "#e27641",
-            width: 36,
-            height: 36,
-            borderRadius: 10,
+            width: 48,
+            height: 48,
+            borderRadius: 12,
             display: "grid",
             placeItems: "center",
-            fontSize: 18,
-            fontWeight: 700,
+            boxShadow: "0 4px 12px rgba(226, 118, 65, 0.15)",
           }}
         >
           {icon}
@@ -185,10 +217,26 @@ function KpiCard({
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: "#fff", borderRadius: 16, padding: 18, boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}>
+    <div 
+      style={{ 
+        background: "#fff", 
+        borderRadius: 16, 
+        padding: 20, 
+        boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
+        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = "0 12px 35px rgba(0,0,0,0.1)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.06)";
+      }}
+    >
       <div style={{ fontSize: 18, fontWeight: 700 }}>{title}</div>
       {subtitle ? <div style={{ fontSize: 12, color: "#8b8b8b", marginTop: 4 }}>{subtitle}</div> : null}
-      <div style={{ marginTop: 14 }}>{children}</div>
+      <div style={{ marginTop: 16 }}>{children}</div>
     </div>
   );
 }
@@ -232,22 +280,48 @@ function Bars({
         }}
       >
         {ventas.map((v, i) => {
-          const h = Math.round((v.total / maxTotal) * 200) + 10; // altura mínima 10
+          const h = Math.round((v.total / maxTotal) * 200) + 10;
           return (
-            <div key={i} title={`${monthNameEs(v.month)} ${v.year} — ${money(v.total)}`} style={{ display: "grid", gridTemplateRows: "1fr auto", gap: 6 }}>
+            <div 
+              key={i} 
+              title={`${monthNameEs(v.month)} ${v.year} — ${money(v.total)}`} 
+              style={{ 
+                display: "grid", 
+                gridTemplateRows: "1fr auto", 
+                gap: 6,
+                animation: `barGrow 0.6s ease ${i * 0.05}s backwards`
+              }}
+            >
               <div
                 style={{
                   height: h,
-                  background: "#e27641",
+                  background: "linear-gradient(180deg, #e27641 0%, #d66535 100%)",
                   borderRadius: 8,
-                  boxShadow: "inset 0 -8px 12px rgba(0,0,0,0.06)",
+                  boxShadow: "0 4px 12px rgba(226, 118, 65, 0.2)",
+                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scaleY(1.05)";
+                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(226, 118, 65, 0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scaleY(1)";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(226, 118, 65, 0.2)";
                 }}
               />
-              <div style={{ textAlign: "center", fontSize: 11, color: "#666" }}>{shortMonthEs(v.month)}</div>
+              <div style={{ textAlign: "center", fontSize: 11, color: "#666", fontWeight: 500 }}>
+                {shortMonthEs(v.month)}
+              </div>
             </div>
           );
         })}
       </div>
+      <style>{`
+        @keyframes barGrow {
+          from { transform: scaleY(0); opacity: 0; }
+          to { transform: scaleY(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -257,24 +331,40 @@ function TopList({ items }: { items: { producto: string; unidades: number }[] })
     return <div style={{ color: "#888" }}>No hay datos para el mes actual.</div>;
   }
   return (
-    <div style={{ display: "grid", gap: 8 }}>
+    <div style={{ display: "grid", gap: 10 }}>
       {items.map((it, idx) => (
         <div
           key={idx}
           style={{
             display: "grid",
             gridTemplateColumns: "1fr auto",
-            gap: 8,
-            padding: "10px 12px",
+            gap: 10,
+            padding: "12px 14px",
             background: "#fafafa",
             borderRadius: 12,
             border: "1px solid #eee",
+            transition: "all 0.2s ease",
+            animation: `slideIn 0.4s ease ${idx * 0.08}s backwards`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#f5f5f5";
+            e.currentTarget.style.transform = "translateX(4px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#fafafa";
+            e.currentTarget.style.transform = "translateX(0)";
           }}
         >
           <div style={{ fontWeight: 600 }}>{it.producto}</div>
-          <div style={{ color: "#555" }}>{it.unidades} u.</div>
+          <div style={{ color: "#e27641", fontWeight: 700 }}>{it.unidades} u.</div>
         </div>
       ))}
+      <style>{`
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
     </div>
   );
 }
