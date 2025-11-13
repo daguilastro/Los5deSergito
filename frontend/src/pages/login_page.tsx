@@ -4,7 +4,7 @@ import { apiFetch } from "../lib/api";
 const CSRF_URL = "/api/csrf/";
 const LOGIN_URL = "/api/login-view/";
 
-// Leer cookie 'csrftoken' (ajusta si usas otro nombre)
+/* ---------- utils ---------- */
 function getCookie(name: string): string | null {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -12,11 +12,13 @@ function getCookie(name: string): string | null {
   return null;
 }
 
+// Pide CSRF una vez usando el wrapper
 async function fetchCsrfOnce() {
   const res = await apiFetch(CSRF_URL, null, "GET");
   if (!res.ok) throw new Error(`CSRF failed: ${res.status}`);
 }
 
+/* ---------- página ---------- */
 export default function LoginPage() {
   const [csrfReady, setCsrfReady] = useState(false);
   const [user, setUser] = useState("");
@@ -24,9 +26,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pedir CSRF al montar
+  // Limpia usuario previo y obtiene CSRF al montar
   useEffect(() => {
     let mounted = true;
+
+    try {
+      sessionStorage.removeItem("user");
+      localStorage.removeItem("user");
+    } catch {}
+
     (async () => {
       try {
         await fetchCsrfOnce();
@@ -35,7 +43,10 @@ export default function LoginPage() {
         if (mounted) setError("No se pudo inicializar la verificación (CSRF).");
       }
     })();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,9 +64,14 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const csrftoken = getCookie("csrftoken");
-      const headers: Record<string, string> = {};
+      const csrftoken = getCookie("csrftoken") || undefined;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       if (csrftoken) headers["X-CSRFToken"] = csrftoken;
+
+      // DEBUG: deja el log para ver el POST en Network (Preserve log)
+      console.log("login → POST", { username: user });
 
       const res = await apiFetch(
         LOGIN_URL,
@@ -64,24 +80,36 @@ export default function LoginPage() {
         headers
       );
 
-      if (res.ok) {
-        // Redirigir al panel principal
-        window.location.href = "/panel_principal";
+      if (!res.ok) {
+        if (res.status === 400 || res.status === 401) {
+          let msg = "Credenciales inválidas.";
+          try {
+            const data = await res.json();
+            if (typeof (data as any)?.detail === "string") msg = (data as any).detail;
+          } catch {}
+          setError(msg);
+          return;
+        }
+        if (res.status === 403) {
+          setError("Error de verificación (CSRF). Refresca la página.");
+          return;
+        }
+        setError(`Error inesperado (${res.status}).`);
         return;
       }
 
-      if (res.status === 400 || res.status === 401) {
-        try {
-          const data = await res.json();
-          setError(typeof data?.detail === "string" ? data.detail : "Credenciales inválidas.");
-        } catch {
-          setError("Credenciales inválidas.");
-        }
-      } else if (res.status === 403) {
-        setError("Error de verificación (CSRF). Refresca la página.");
-      } else {
-        setError(`Error inesperado (${res.status}).`);
+      const data: { ok: boolean; user?: { id: number; username: string; rol: string } } = await res.json();
+      if (!data?.ok || !data.user) {
+        setError("Respuesta inválida del servidor.");
+        return;
       }
+
+      try {
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.removeItem("user"); // usa sólo sessionStorage
+      } catch {}
+
+      window.location.href = "/panel_principal";
     } catch {
       setError("No se pudo conectar con el servidor.");
     } finally {
@@ -92,14 +120,13 @@ export default function LoginPage() {
   return (
     <div
       style={{
-        /* 100% del viewport: usar dvh para móviles + fallback vh */
         width: "100vw",
         height: "100dvh",
         minHeight: "100vh",
         display: "grid",
         placeItems: "center",
         background: "#fcf4ef",
-        padding: 16, // respiración en pantallas chicas
+        padding: 16,
       }}
     >
       <form
@@ -188,6 +215,6 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid #e7e7e7",
   outline: "none",
   background: "#fff",
-  color: "#222",      
-  caretColor: "#222",  
+  color: "#222",
+  caretColor: "#222",
 };
