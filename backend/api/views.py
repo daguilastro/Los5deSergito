@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.middleware.csrf import get_token
 from django.db import transaction
 from django.views.decorators.http import require_POST, require_GET
@@ -10,6 +10,11 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum, F
 import random
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+import base64
 
 from .models import (
     Detalleventa,
@@ -67,6 +72,13 @@ def ventas_create(request):
         {"producto_id": 7, "cantidad": 1}
       ]
     }
+
+    Respuesta:
+      {
+        ok: true,
+        venta: { id, fecha, cliente, total, items: [...] },
+        invoice: { filename, mime, base64 }
+      }
     """
     data = json.loads(request.body or b"{}")
     items = data.get("items") or []
@@ -97,21 +109,19 @@ def ventas_create(request):
             return JsonResponse({"detail": "cantidad debe ser > 0"}, status=400)
         norm_items.append((pid, qty))
 
-    # 1) Pre-validación de stock (antes de abrir transacción, solo para mensajes)
+    # 1) Pre-validación de stock
     faltantes = []
     for pid, qty in norm_items:
-        p = Producto.objects.filter(pk=pid).only(
-            "id", "nombre", "stock_actual").first()
+        p = Producto.objects.filter(pk=pid).only("id", "nombre", "stock_actual").first()
         if not p:
             return JsonResponse({"detail": f"producto_id {pid} no existe"}, status=404)
         disp = p.stock_actual or 0
         if qty > disp:
-            faltantes.append(
-                {"producto_id": pid, "nombre": p.nombre, "disponible": disp, "solicitado": qty})
+            faltantes.append({"producto_id": pid, "nombre": p.nombre, "disponible": disp, "solicitado": qty})
     if faltantes:
         return JsonResponse({"detail": "stock insuficiente", "items": faltantes}, status=400)
 
-    # 2) Crear la venta y sus efectos (TODO atómico)
+    # 2) Crear la venta y sus efectos
     with transaction.atomic():
         v = Venta.objects.create(
             fecha=fecha_txt,
@@ -124,14 +134,11 @@ def ventas_create(request):
         resumen_items = []
 
         for pid, qty in norm_items:
-            # Bloquea la fila para evitar condiciones de carrera
             p = Producto.objects.select_for_update().get(pk=pid)
 
             disp = p.stock_actual or 0
             if qty > disp:
-                # Doble chequeo dentro de la transacción
-                raise transaction.TransactionManagementError(
-                    "Stock cambió; intenta de nuevo.")
+                raise transaction.TransactionManagementError("Stock cambió; intenta de nuevo.")
 
             precio_unit = _to_decimal(p.precio_unitario)
             subtotal = precio_unit * qty
@@ -171,6 +178,10 @@ def ventas_create(request):
         v.total = _money_str(total)
         v.save(update_fields=["total"])
 
+    # ---- Generar factura PDF e incluirla en el JSON (base64) ----
+    pdf_bytes = _build_invoice_pdf_bytes(v, resumen_items)
+    pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
+
     return JsonResponse({
         "ok": True,
         "venta": {
@@ -179,9 +190,69 @@ def ventas_create(request):
             "cliente": v.nombre_comprador,
             "total": v.total,
             "items": resumen_items
+        },
+        "invoice": {
+            "filename": f"factura_{v.id}.pdf",
+            "mime": "application/pdf",
+            "base64": pdf_b64
         }
     }, status=201)
 
+
+# ---------- Helper mínimo para PDF con ReportLab ----------
+def _build_invoice_pdf_bytes(venta: Venta, items: list[dict]) -> bytes:
+    """
+    Genera un PDF sencillo de factura en memoria.
+    """
+    buf = BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+
+    y = height - 20 * mm
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(20 * mm, y, "Factura de Venta")
+    y -= 10 * mm
+
+    c.setFont("Helvetica", 10)
+    c.drawString(20 * mm, y, f"N°: {venta.id}")
+    y -= 6 * mm
+    c.drawString(20 * mm, y, f"Fecha: {venta.fecha}")
+    y -= 6 * mm
+    c.drawString(20 * mm, y, f"Cliente: {venta.nombre_comprador or '-'}")
+    y -= 10 * mm
+
+    # Encabezado
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(20 * mm, y, "Producto")
+    c.drawString(110 * mm, y, "Cant.")
+    c.drawString(130 * mm, y, "P. Unit")
+    c.drawString(160 * mm, y, "Subtotal")
+    y -= 4 * mm
+    c.line(20 * mm, y, 190 * mm, y)
+    y -= 6 * mm
+
+    # Filas
+    c.setFont("Helvetica", 10)
+    for it in items:
+        c.drawString(20 * mm, y, (it.get("nombre") or "")[:50])
+        c.drawRightString(125 * mm, y, str(it.get("cantidad") or 0))
+        c.drawRightString(155 * mm, y, str(it.get("precio_unitario") or "0.00"))
+        c.drawRightString(190 * mm, y, str(it.get("subtotal") or "0.00"))
+        y -= 6 * mm
+        if y < 30 * mm:
+            c.showPage()
+            y = height - 20 * mm
+            c.setFont("Helvetica", 10)
+
+    # Total
+    c.setFont("Helvetica-Bold", 12)
+    c.drawRightString(190 * mm, 20 * mm, f"Total: {venta.total}")
+
+    c.showPage()
+    c.save()
+    pdf = buf.getvalue()
+    buf.close()
+    return pdf
 
 @require_POST
 @csrf_protect
