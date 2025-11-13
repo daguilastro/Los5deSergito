@@ -5,6 +5,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./components/main_layout";
 import PanelPrincipal from "./pages/panel_principal";
 import Inventario from "./pages/inventario";
+import Ventas from "./pages/ventas";
+import Alertas from "./pages/alertas";
 
 // Páginas
 import LoginPage from "./pages/login_page";
@@ -23,10 +25,10 @@ export default function App() {
         <Route element={<MainLayout user={user} />}>
           <Route path="/panel_principal" element={<PanelPrincipal />} />
           <Route path="/inventario"       element={<Inventario />} />
+          <Route path="/ventas" element={<Ventas />} />
+          <Route path="/alertas" element={<Alertas />} />
         </Route>
-
-
-        {/* Cualquier otra ruta → login */}
+          
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
