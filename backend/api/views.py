@@ -266,14 +266,38 @@ def inventario_add(request):
 
     if producto_id is None and not nombre:
         return JsonResponse({"detail": "envía producto_id o nombre"}, status=400)
+
+    # Resolver o crear producto
     try:
         if producto_id is not None:
             producto = get_object_or_404(Producto, pk=int(producto_id))
         else:
-            producto = get_object_or_404(Producto, nombre=nombre)
+            # buscar por nombre (exact match)
+            producto = Producto.objects.filter(nombre=nombre).first()
+            if producto is None:
+                # Crear nuevo producto si no existe.
+                # Tomamos precio_unitario y stock_minimo si los envía el cliente; si no, valores por defecto.
+                precio_raw = data.get("precio_unitario", "0.00")
+                try:
+                    precio_val = _to_decimal(precio_raw)
+                except Exception:
+                    precio_val = Decimal("0")
+                stock_min_val = 0
+                try:
+                    stock_min_val = int(data.get("stock_minimo", 0) or 0)
+                except (TypeError, ValueError):
+                    stock_min_val = 0
+
+                producto = Producto.objects.create(
+                    nombre=nombre,
+                    precio_unitario=_money_str(precio_val),  # tu esquema usa TEXT
+                    stock_actual=0,
+                    stock_minimo=stock_min_val,
+                )
     except (TypeError, ValueError):
         return JsonResponse({"detail": "producto_id inválido"}, status=400)
 
+    # Validar cantidad
     try:
         cantidad = int(cantidad)
     except (TypeError, ValueError):
@@ -281,12 +305,15 @@ def inventario_add(request):
     if cantidad <= 0:
         return JsonResponse({"detail": "cantidad debe ser > 0"}, status=400)
 
+    # Usuario creador (si hay sesión)
     created_by = None
     uid = request.session.get("uid")
     if uid:
         created_by = Usuario.objects.filter(pk=uid).first()
 
+    # Aplicar actualización del stock y movimiento dentro de transacción
     with transaction.atomic():
+        # bloquear la fila del producto
         p = Producto.objects.select_for_update().get(pk=producto.pk)
         p.stock_actual = (p.stock_actual or 0) + cantidad
         p.save(update_fields=["stock_actual"])

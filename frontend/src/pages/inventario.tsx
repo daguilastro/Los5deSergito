@@ -376,51 +376,51 @@ function AddProductModal({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  async function submit() {
-    setMsg(null);
+async function submit() {
+  setMsg(null);
 
-    const cant = Number(cantidadIni);
-    const min = Number(stockMinimo);
+  const cant = Number(cantidadIni);
+  const min = Number(stockMinimo);
 
-    if (!nombre.trim()) {
-      setMsg("Escribe un nombre.");
-      return;
-    }
-    if (!Number.isInteger(cant) || cant < 0) {
-      setMsg("Cantidad inicial debe ser entero ≥ 0.");
-      return;
-    }
-    if (!Number.isInteger(min) || min < 0) {
-      setMsg("Stock mínimo debe ser entero ≥ 0.");
-      return;
-    }
-
-    const payload = {
-      nombre: nombre.trim(),
-      cantidad_inicial: cant,
-      descripcion: descripcion.trim() || null,
-      stock_minimo: min,
-    };
-
-    const csrf = getCookie("csrftoken");
-    try {
-      setBusy(true);
-      const res = await apiFetch(CREATE_URL, payload, "POST", {
-        "X-CSRFToken": csrf,
-        "Content-Type": "application/json",
-      });
-      if (!res.ok) {
-        setMsg((await res.text()) || "No se pudo crear el producto.");
-        return;
-      }
-      const data = (await res.json()) as { ok: true; producto: Producto };
-      onSuccess(data.producto);
-    } catch {
-      setMsg("Error de red.");
-    } finally {
-      setBusy(false);
-    }
+  if (!nombre.trim()) {
+    setMsg("Escribe un nombre.");
+    return;
   }
+  if (!Number.isInteger(cant) || cant < 0) {
+    setMsg("Cantidad inicial debe ser entero ≥ 0.");
+    return;
+  }
+  if (!Number.isInteger(min) || min < 0) {
+    setMsg("Stock mínimo debe ser entero ≥ 0.");
+    return;
+  }
+
+  const payload = {
+    nombre: nombre.trim(),
+    cantidad: cant,                // <-- aquí cambié la clave a "cantidad"
+    descripcion: descripcion.trim() || null,
+    stock_minimo: min,
+  };
+
+  const csrf = getCookie("csrftoken");
+  try {
+    setBusy(true);
+    const res = await apiFetch(CREATE_URL, payload, "POST", {
+      "X-CSRFToken": csrf,
+      "Content-Type": "application/json",
+    });
+    if (!res.ok) {
+      setMsg((await res.text()) || "No se pudo crear el producto.");
+      return;
+    }
+    const data = (await res.json()) as { ok: true; producto: Producto };
+    onSuccess(data.producto);
+  } catch {
+    setMsg("Error de red.");
+  } finally {
+    setBusy(false);
+  }
+}
 
   return (
     <div style={modalBackdrop}>
